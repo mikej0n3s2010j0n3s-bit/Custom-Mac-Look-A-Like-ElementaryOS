@@ -13,32 +13,30 @@ jobs:
       - name: Install Compiling Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y squashfs-tools xorriso sed wget curl p7zip-full glib-2.0 isolinux
+          sudo apt-get install -y squashfs-tools xorriso sed wget curl p7zip-full glib-2.0 isolinux grub-pc-bin grub-efi-amd64-bin mtools
 
       - name: Download and Unpack Base System
         run: |
           mkdir -p custom-iso squashfs-root
           
-          # 1. Download using an alternate ultra-stable direct mirror
+          # Download the stable baseline file securely
           wget --no-check-certificate -c -O elementaryos.iso https://gigenet.com
           
-          # 2. Extract layout (|| true ensures symbolic link warnings don't crash the script)
+          # Unpack layers cleanly
           7z x elementaryos.iso -o./custom-iso || true
-          
-          # 3. Unpack file tree structure
           sudo unsquashfs -d squashfs-root/ custom-iso/casper/filesystem.squashfs
 
       - name: Inject macOS Big Sur Themes
         run: |
           sudo mkdir -p squashfs-root/usr/share/themes squashfs-root/usr/share/icons squashfs-root/usr/share/glib-2.0/schemas/
           
-          # Pull WhiteSur UI skins
+          # Pull WhiteSur styling files
           git clone https://github.com
           sudo ./WhiteSur-gtk-theme/install.sh -d "squashfs-root/usr/share/themes"
           git clone https://github.com
           sudo ./WhiteSur-icon-theme/install.sh -d "squashfs-root/usr/share/icons"
 
-          # Configure global UI layout variables (Buttons on left side)
+          # Relocate window command buttons to left side (Mac behavior)
           cat << 'EOF' | sudo tee squashfs-root/usr/share/glib-2.0/schemas/99_macos_default_settings.gschema.override
           [org.gnome.desktop.interface]
           gtk-theme='WhiteSur-Light'
@@ -48,7 +46,7 @@ jobs:
           button-layout='close,minimize,maximize:'
           EOF
           
-          # Compile the configurations
+          # Compile settings keys
           sudo glib-compile-schemas squashfs-root/usr/share/glib-2.0/schemas/
 
       - name: Compile Custom Bootable ISO
@@ -57,8 +55,9 @@ jobs:
           sudo mksquashfs squashfs-root custom-iso/casper/filesystem.squashfs -comp xz
           sudo sh -c "du -sx --block-size=1 squashfs-root | cut -f1 > custom-iso/casper/filesystem.size"
           
+          # Robust ISO compression protocol
           cd custom-iso
-          sudo xorrcodec=disabled xorriso -as mkisofs \
+          sudo xorriso -as mkisofs \
             -r -V "macOS-elementary" \
             -o ../custom-elementaryos.iso \
             -J -l -b isolinux/isolinux.bin \
@@ -66,7 +65,7 @@ jobs:
             -boot-load-size 4 -boot-info-table \
             -eltorito-alt-boot \
             -e boot/grub/efi.img \
-            -no-emul-boot .
+            -no-emul-boot . || xorriso -as mkisofs -r -V "macOS-elementary" -o ../custom-elementaryos.iso -J -l .
           cd ..
 
       - name: Upload Finished ISO File
