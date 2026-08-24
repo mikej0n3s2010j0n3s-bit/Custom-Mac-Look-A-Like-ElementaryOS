@@ -27,22 +27,17 @@ jobs:
           sudo mkdir -p squashfs-root/usr/share/themes/WhiteSur-Light
           sudo mkdir -p squashfs-root/usr/share/icons/WhiteSur
           sudo mkdir -p squashfs-root/usr/share/glib-2.0/schemas/
-          
           git clone --depth 1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git
           sudo cp -r WhiteSur-gtk-theme/src/. squashfs-root/usr/share/themes/WhiteSur-Light/
-          
           git clone --depth 1 https://github.com/vinceliuice/WhiteSur-icon-theme.git
           sudo cp -r WhiteSur-icon-theme/src/. squashfs-root/usr/share/icons/WhiteSur/
-
-          cat > /tmp/macos_settings.override << 'SETTINGS'
+          sudo tee squashfs-root/usr/share/glib-2.0/schemas/99_macos_default_settings.gschema.override > /dev/null << EOF
 [org.gnome.desktop.interface]
 gtk-theme=WhiteSur-Light
 icon-theme=WhiteSur
-
 [org.pantheon.desktop.gala.appearance]
 button-layout=close,minimize,maximize:
-SETTINGS
-          sudo mv /tmp/macos_settings.override squashfs-root/usr/share/glib-2.0/schemas/99_macos_default_settings.gschema.override
+EOF
           sudo glib-compile-schemas squashfs-root/usr/share/glib-2.0/schemas/
 
       - name: Compile Custom Bootable ISO
@@ -50,17 +45,8 @@ SETTINGS
           sudo rm -f custom-iso/casper/filesystem.squashfs
           sudo mksquashfs squashfs-root custom-iso/casper/filesystem.squashfs -comp xz
           sudo sh -c "du -sx --block-size=1 squashfs-root | cut -f1 > custom-iso/casper/filesystem.size"
-          
           cd custom-iso
-          sudo xorriso -as mkisofs \
-            -r -V "macOS-elementary" \
-            -o ../custom-elementaryos.iso \
-            -J -l -b isolinux/isolinux.bin \
-            -c isolinux/boot.cat -no-emul-boot \
-            -boot-load-size 4 -boot-info-table \
-            -eltorito-alt-boot \
-            -e boot/grub/efi.img \
-            -no-emul-boot . || true
+          sudo xorriso -as mkisofs -r -V "macOS-elementary" -o ../custom-elementaryos.iso -J -l -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot . || true
           cd ..
 
       - name: Upload Finished ISO File
