@@ -31,13 +31,13 @@ jobs:
           sudo cp -r WhiteSur-gtk-theme/src/. squashfs-root/usr/share/themes/WhiteSur-Light/
           git clone --depth 1 https://github.com/vinceliuice/WhiteSur-icon-theme.git
           sudo cp -r WhiteSur-icon-theme/src/. squashfs-root/usr/share/icons/WhiteSur/
-          sudo tee squashfs-root/usr/share/glib-2.0/schemas/99_macos_default_settings.gschema.override > /dev/null << EOF
+          sudo bash -c 'cat > squashfs-root/usr/share/glib-2.0/schemas/99_macos_default_settings.gschema.override << EOF
 [org.gnome.desktop.interface]
 gtk-theme=WhiteSur-Light
 icon-theme=WhiteSur
 [org.pantheon.desktop.gala.appearance]
 button-layout=close,minimize,maximize:
-EOF
+EOF'
           sudo glib-compile-schemas squashfs-root/usr/share/glib-2.0/schemas/
 
       - name: Compile Custom Bootable ISO
