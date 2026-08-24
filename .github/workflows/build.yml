@@ -18,8 +18,8 @@ jobs:
       - name: Download and Unpack Base System
         run: |
           mkdir -p custom-iso squashfs-root
-          # Use an automated mirror to grab the 3GB base system securely
-          curl -L -o elementaryos.iso https://gigenet.com
+          # Uses the exact, full direct storage link path to grab the 3GB OS image
+          curl -k -L -o elementaryos.iso https://archive.org
           7z x elementaryos.iso -o./custom-iso
           sudo unsquashfs -d squashfs-root/ custom-iso/casper/filesystem.squashfs
 
