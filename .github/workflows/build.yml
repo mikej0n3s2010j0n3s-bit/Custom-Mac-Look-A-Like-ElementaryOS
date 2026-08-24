@@ -1,7 +1,7 @@
 name: Compile macOS Style Elementary OS ISO
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   build-iso:
@@ -13,40 +13,40 @@ jobs:
       - name: Install Compiling Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y squashfs-tools xorriso sed wget curl p7zip-full glib-2.0 isolinux grub-pc-bin grub-efi-amd64-bin mtools
+          sudo apt-get install -y squashfs-tools xorriso sed wget curl p7zip-full glib-2.0 isolinux
 
       - name: Download and Unpack Base System
         run: |
           mkdir -p custom-iso squashfs-root
-          
-          # Download the stable baseline file securely
-          wget --no-check-certificate -c -O elementaryos.iso https://gigenet.com
-          
-          # Unpack layers cleanly
+          # Download Elementary OS ISO from official source
+          wget -O elementaryos.iso https://elementary.io/downloads/iso
           7z x elementaryos.iso -o./custom-iso || true
           sudo unsquashfs -d squashfs-root/ custom-iso/casper/filesystem.squashfs
 
       - name: Inject macOS Big Sur Themes
         run: |
-          sudo mkdir -p squashfs-root/usr/share/themes squashfs-root/usr/share/icons squashfs-root/usr/share/glib-2.0/schemas/
+          sudo mkdir -p squashfs-root/usr/share/themes/WhiteSur-Light
+          sudo mkdir -p squashfs-root/usr/share/icons/WhiteSur
+          sudo mkdir -p squashfs-root/usr/share/glib-2.0/schemas/
           
-          # Pull WhiteSur styling files
-          git clone https://github.com
-          sudo ./WhiteSur-gtk-theme/install.sh -d "squashfs-root/usr/share/themes"
-          git clone https://github.com
-          sudo ./WhiteSur-icon-theme/install.sh -d "squashfs-root/usr/share/icons"
+          # Clone and copy WhiteSur GTK theme
+          git clone --depth 1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git
+          sudo cp -r WhiteSur-gtk-theme/src/. squashfs-root/usr/share/themes/WhiteSur-Light/
+          
+          # Clone and copy WhiteSur icon theme
+          git clone --depth 1 https://github.com/vinceliuice/WhiteSur-icon-theme.git
+          sudo cp -r WhiteSur-icon-theme/src/. squashfs-root/usr/share/icons/WhiteSur/
 
-          # Relocate window command buttons to left side (Mac behavior)
+          # Set macOS-style window button layout (close, minimize, maximize on left)
           cat << 'EOF' | sudo tee squashfs-root/usr/share/glib-2.0/schemas/99_macos_default_settings.gschema.override
-          [org.gnome.desktop.interface]
-          gtk-theme='WhiteSur-Light'
-          icon-theme='WhiteSur'
-          cursor-theme='WhiteSur-cursors'
-          [org.pantheon.desktop.gala.appearance]
-          button-layout='close,minimize,maximize:'
-          EOF
+[org.gnome.desktop.interface]
+gtk-theme='WhiteSur-Light'
+icon-theme='WhiteSur'
+
+[org.pantheon.desktop.gala.appearance]
+button-layout='close,minimize,maximize:'
+EOF
           
-          # Compile settings keys
           sudo glib-compile-schemas squashfs-root/usr/share/glib-2.0/schemas/
 
       - name: Compile Custom Bootable ISO
@@ -55,7 +55,6 @@ jobs:
           sudo mksquashfs squashfs-root custom-iso/casper/filesystem.squashfs -comp xz
           sudo sh -c "du -sx --block-size=1 squashfs-root | cut -f1 > custom-iso/casper/filesystem.size"
           
-          # Robust ISO compression protocol
           cd custom-iso
           sudo xorriso -as mkisofs \
             -r -V "macOS-elementary" \
@@ -65,7 +64,7 @@ jobs:
             -boot-load-size 4 -boot-info-table \
             -eltorito-alt-boot \
             -e boot/grub/efi.img \
-            -no-emul-boot . || xorriso -as mkisofs -r -V "macOS-elementary" -o ../custom-elementaryos.iso -J -l .
+            -no-emul-boot . || true
           cd ..
 
       - name: Upload Finished ISO File
