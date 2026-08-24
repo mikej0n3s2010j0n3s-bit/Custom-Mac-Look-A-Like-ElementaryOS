@@ -1,7 +1,7 @@
 name: Compile macOS Style Elementary OS ISO
 
 on:
-  workflow_dispatch: # Allows you to manually trigger the build with a button click
+  workflow_dispatch: 
 
 jobs:
   build-iso:
@@ -13,14 +13,19 @@ jobs:
       - name: Install Compiling Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y squashfs-tools xorriso sed wget curl p7zip-full glib-2.0
+          sudo apt-get install -y squashfs-tools xorriso sed wget curl p7zip-full glib-2.0 isolinux
 
       - name: Download and Unpack Base System
         run: |
           mkdir -p custom-iso squashfs-root
-          # Uses the exact, full direct storage link path to grab the 3GB OS image
-          curl -k -L -o elementaryos.iso https://archive.org
-          7z x elementaryos.iso -o./custom-iso
+          
+          # 1. Download using an alternate ultra-stable direct mirror
+          wget --no-check-certificate -c -O elementaryos.iso https://gigenet.com
+          
+          # 2. Extract layout (|| true ensures symbolic link warnings don't crash the script)
+          7z x elementaryos.iso -o./custom-iso || true
+          
+          # 3. Unpack file tree structure
           sudo unsquashfs -d squashfs-root/ custom-iso/casper/filesystem.squashfs
 
       - name: Inject macOS Big Sur Themes
